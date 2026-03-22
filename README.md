@@ -91,16 +91,33 @@ green "✓ N rate days loaded" indicator).
 ### Step 2 — Upload your Morgan Stanley PDF statements
 
 You need up to two PDFs, both downloadable from the Morgan Stanley StockPlan
-Connect portal:
+Connect portal.
+
+#### How to generate the report in StockPlan Connect
+
+In StockPlan Connect, go to **Reports → Account Summary** and configure it as
+shown below:
+
+![Morgan Stanley Account Summary report generation screen](docs/morgan-account-summary.png)
+
+- **Start Date / End Date:** set to the full calendar year you are reporting
+  (e.g. 2025-01-01 – 2025-12-31), or use *Period Quick Select → Last Calendar
+  Year*
+- **Product Selection:** tick both **Share & Cash Holdings** and **Equity Awards**
+- **View As:** PDF (A4)
+- **Account Summary Type:** Full
+- Click **Submit** to download the PDF
 
 | PDF | Where to find it | Purpose |
 |---|---|---|
-| **Reporting year statement** (required) | Statements → Annual → select the tax year | Parses all transactions for the year you are reporting |
-| **Prior year December statement** (optional but recommended) | Statements → Monthly → select December of the prior year | Determines your opening share balance on 1 January and catches any wire transfers made in the reporting year for sales that settled in December of the prior year |
+| **Reporting year statement** (required) | Reports → Account Summary → full calendar year | Parses all transactions for the year you are reporting |
+| **Prior year December statement** (optional but recommended) | Reports → Account Summary → 1 Dec – 31 Dec of the prior year | Determines your opening share balance on 1 January and catches any wire transfers crossing the year boundary |
 
-> **Note:** for the prior year, only the **December monthly report** is needed —
-> not the full annual statement.  The app only uses it to read holdings as of
-> 31 December and to identify any late wire transfers crossing the year boundary.
+> **Prior year:** you only need the **December monthly period** (1 Dec – 31 Dec),
+> not the full prior-year annual statement.  The app uses it solely to read
+> holdings as of 31 December and to identify any wire transfers that were
+> initiated in the reporting year but relate to sales that settled in December
+> of the prior year.
 
 Drop each file onto the corresponding drop zone, or click to browse.
 
