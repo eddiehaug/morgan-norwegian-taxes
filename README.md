@@ -96,7 +96,11 @@ Connect portal:
 | PDF | Where to find it | Purpose |
 |---|---|---|
 | **Reporting year statement** (required) | Statements → Annual → select the tax year | Parses all transactions for the year you are reporting |
-| **Prior year statement** (optional but recommended) | Statements → Annual → select the year before | Used to compute your opening share balance (cost basis of shares already held at 1 January) |
+| **Prior year December statement** (optional but recommended) | Statements → Monthly → select December of the prior year | Determines your opening share balance on 1 January and catches any wire transfers made in the reporting year for sales that settled in December of the prior year |
+
+> **Note:** for the prior year, only the **December monthly report** is needed —
+> not the full annual statement.  The app only uses it to read holdings as of
+> 31 December and to identify any late wire transfers crossing the year boundary.
 
 Drop each file onto the corresponding drop zone, or click to browse.
 
@@ -257,10 +261,11 @@ The app reads the statement period from the PDF.  If the auto-detected year is
 wrong, change it manually in the year selector before calculating.
 
 **Opening balance is zero / cost basis seems wrong**
-Make sure you upload the *prior year* statement (e.g. the 2024 statement when
-filing for 2025).  Without it the app assumes you held no shares at the start of
-the year, which will produce an incorrect cost basis for shares bought in
-previous years.
+Make sure you upload the **December monthly statement** for the prior year
+(e.g. December 2024 when filing for 2025).  This is found under
+Statements → Monthly in StockPlan Connect.  Without it the app assumes you held
+no shares at the start of the year, which will produce an incorrect cost basis
+for shares bought in previous years.
 
 ---
 

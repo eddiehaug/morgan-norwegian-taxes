@@ -99,7 +99,7 @@ function updateYearLabels(year) {
   const dzRep = getEl("dz-reporting-label");
   if (dzRep && !state.reportingPdfFile) dzRep.textContent = `Drop your ${year} Morgan Stanley PDF or click to select`;
   const dzPrior = getEl("dz-prior-label");
-  if (dzPrior && !state.priorPdfFile) dzPrior.textContent = `Drop your ${year - 1} Morgan Stanley PDF or click to select`;
+  if (dzPrior && !state.priorPdfFile) dzPrior.textContent = `Drop your ${year - 1} December monthly statement or click to select`;
 }
 
 // ── Drop Zone helper ───────────────────────────────────────────────────────
