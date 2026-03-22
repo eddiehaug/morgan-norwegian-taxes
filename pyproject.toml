@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ['espp2', 'espp2.web', 'espp2.plugins']
+
+[tool.setuptools.package-data]
+espp2 = ["data/*", "web/static/*"]
+
+[project]
+name = "taxledger"
+version = "2025.1"
+description = "Norwegian tax reporting for Morgan Stanley ESPP/RSU shareholders"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = [
+    "pydantic",
+    "simplejson",
+    "pandas",
+    "urllib3",
+    "python-dateutil",
+    "uvicorn",
+    "fastapi",
+    "python-multipart",
+    "tabulate",
+    "rich",
+    "typer",
+    "openpyxl",
+    "pdfplumber>=0.11",
+]
+readme = "README.md"
+
+[project.scripts]
+taxledger = "espp2.web.server:start"
+
+[tool.flake8]
+max-line-length = 120
+ignore = ["E501"]

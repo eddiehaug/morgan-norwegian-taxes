@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaxLedger Pro</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav class="nav">
+  <span class="nav-logo">TaxLedger Pro</span>
+  <div class="nav-tabs">
+    <button class="nav-tab" data-view="reports">Reports</button>
+  </div>
+</nav>
+
+<!-- ── App Container ── -->
+<main class="page" id="app">
+
+  <!-- ════════════════════════════════════════════════
+       VIEW: Reports / Input
+  ════════════════════════════════════════════════ -->
+  <div id="view-reports" class="hidden">
+    <div class="container fade-in">
+      <div class="page-header">
+        <div>
+          <h1>Financial Reporting</h1>
+          <p class="body-md" style="margin-top:0.25rem">Upload your Morgan Stanley PDF statements and bank wire transfers to calculate your tax declaration values.</p>
+        </div>
+        <div class="year-selector">
+          <label class="label-sm" for="reporting-year-select">Reporting Year</label>
+          <select id="reporting-year-select"></select>
+          <span id="rates-status-inline" class="rates-status"></span>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Left: File uploads -->
+        <div>
+          <!-- Reporting Year PDF -->
+          <div class="card" style="margin-bottom:1.25rem">
+            <div class="card-title">Statement: Reporting Year</div>
+            <div class="card-subtitle" id="reporting-pdf-subtitle">Full annual statement from StockPlanConnect</div>
+            <div class="drop-zone" id="dz-reporting" tabindex="0">
+              <input type="file" accept=".pdf" id="input-reporting-pdf" />
+              <div class="drop-icon">📄</div>
+              <div class="drop-label" id="dz-reporting-label">Drop your reporting-year PDF here or click to select</div>
+              <div class="drop-hint">Morgan Stanley annual statement (e.g. Jan 1–Dec 31 2024)</div>
+              <div class="file-name hidden" id="dz-reporting-filename"></div>
+            </div>
+          </div>
+
+          <!-- Prior Year PDF -->
+          <div class="card">
+            <div class="card-title">Statement: Prior Year</div>
+            <div class="card-subtitle">Used only to determine your opening balance as of 1 January of the reporting year (optional)</div>
+            <div class="drop-zone" id="dz-prior" tabindex="0">
+              <input type="file" accept=".pdf" id="input-prior-pdf" />
+              <div class="drop-icon">📄</div>
+              <div class="drop-label" id="dz-prior-label">Drop your prior-year PDF here or click to select</div>
+              <div class="drop-hint">One year earlier — only EOY balance is used</div>
+              <div class="file-name hidden" id="dz-prior-filename"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Bank wires -->
+        <div class="card">
+          <div class="card-title">Bank Transfers Received</div>
+          <div class="card-subtitle">Wire dates and USD amounts are extracted from your PDF. Enter the NOK amount credited to your bank account for each transfer.</div>
+
+          <div style="display:flex;justify-content:flex-end;margin-bottom:0.75rem">
+            <button class="btn btn-secondary btn-sm" id="btn-add-wire">+ Add Row</button>
+          </div>
+
+          <table class="wire-table" id="wire-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>USD (from PDF)</th>
+                <th>NOK Received</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="wire-tbody">
+              <!-- Wire rows injected by JS -->
+            </tbody>
+          </table>
+
+          <p id="wire-pdf-hint" class="hidden" style="margin:0.5rem 0 0;font-size:0.8125rem;color:var(--on-surface-variant)"></p>
+          <div class="wire-subtotal">Total NOK received: <span id="wire-total">0.00 kr</span></div>
+
+          <div style="margin-top:1.5rem">
+            <button class="btn btn-primary" id="btn-submit" style="width:100%;justify-content:center">
+              Validate &amp; Submit →
+            </button>
+            <div id="submit-error" class="banner banner-error hidden" style="margin-top:0.75rem">
+              <span class="banner-icon">⚠️</span>
+              <span id="submit-error-msg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       VIEW: Processing
+  ════════════════════════════════════════════════ -->
+  <div id="view-processing" class="hidden">
+    <div class="progress-page fade-in">
+      <p class="label-sm progress-phase" id="progress-phase-label">PROCESSING PHASE 1 OF 4</p>
+      <h2 class="display-lg" style="max-width:580px;margin:0.75rem auto">Analyzing your financial narrative.</h2>
+      <div class="progress-bar-track" style="margin-top:2rem">
+        <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+      </div>
+      <div class="progress-info">
+        <span id="progress-message">Starting…</span>
+        <span class="progress-pct" id="progress-pct">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       VIEW: Results
+  ════════════════════════════════════════════════ -->
+  <div id="view-results" class="hidden">
+    <div class="container fade-in">
+      <div class="page-header">
+        <div>
+          <h1>Tax Reporting Results — <span id="results-year"></span></h1>
+          <p class="body-md" style="margin-top:0.25rem">Copy each value below into the corresponding field on skatteetaten.no.</p>
+        </div>
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="window.print()">🖨 Print Summary</button>
+          <button class="btn btn-primary" id="btn-download">⬇ Download .xlsx Report</button>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Left: Values table -->
+        <div class="card">
+          <div class="card-title">
+            <span class="status-dot"></span>Skattemeldingen Values
+          </div>
+          <table class="results-table" id="results-table">
+            <!-- Populated by JS -->
+          </table>
+        </div>
+
+        <!-- Right: Instructions + export history -->
+        <div>
+          <div class="card instructions" style="margin-bottom:1.25rem">
+            <div class="card-title">Filing Instructions</div>
+            <ol>
+              <li>Log in to <strong>skatteetaten.no</strong> using your BankID</li>
+              <li>Find the section <strong>«Utenlandske aksjer»</strong> under Formue og inntekt</li>
+              <li>Copy each value shown on the left into the corresponding field</li>
+              <li>Repeat for <strong>Kreditfradrag</strong> (double taxation deduction)</li>
+              <li>Check <strong>Valutagevinst/-tap</strong> and <strong>USD-saldo</strong> sections</li>
+            </ol>
+            <div style="margin-top:1.25rem">
+              <a href="https://www.skatteetaten.no" target="_blank" class="btn btn-outline" style="text-decoration:none">
+                Go to Skatteetaten ↗
+              </a>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Export History</div>
+            <div id="export-history">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <div style="margin-top:1.25rem">
+            <button class="btn btn-secondary" id="btn-new-report" style="width:100%;justify-content:center">
+              ← Start New Report
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
