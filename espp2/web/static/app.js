@@ -233,7 +233,7 @@ function renderWireRows() {
       const row = state.wireRows.find(r => r.id === id);
       if (row) {
         row[field] = inp.value;
-        if (field === "nok") updateWireTotal();
+        if (field === "nok") { inp.style.outline = ""; updateWireTotal(); }
       }
     });
     inp.addEventListener("blur", updateWireTotal);
@@ -261,8 +261,27 @@ getEl("btn-submit")?.addEventListener("click", async () => {
   showView("processing");
   updateProgress(1, 2, "Uploading files…");
 
+  // Validate wire rows: every row that has a date or USD must also have NOK > 0
+  const incompleteWires = state.wireRows.filter(r => {
+    const hasData = r.date || parseFloat(r.usd) > 0;
+    const nokVal = parseFloat(r.nok) || 0;
+    return hasData && nokVal <= 0;
+  });
+  if (incompleteWires.length > 0) {
+    showSubmitError(
+      `Please enter the NOK amount received for ${incompleteWires.length === 1 ? "the highlighted wire transfer" : "all highlighted wire transfers"} before calculating. ` +
+      "You can find this in your bank statement (look for incoming international transfers on the same dates)."
+    );
+    // Highlight the incomplete rows
+    incompleteWires.forEach(r => {
+      const input = document.querySelector(`[data-wire-id="${r.id}"][data-wire-field="nok"]`);
+      if (input) { input.style.outline = "2px solid #e74c3c"; input.focus(); }
+    });
+    return;
+  }
+
   const wires = state.wireRows
-    .filter(r => r.date && (r.usd || r.nok))
+    .filter(r => r.date && (parseFloat(r.usd) > 0 || parseFloat(r.nok) > 0))
     .map(r => ({ date: r.date, usd: parseFloat(r.usd) || 0, nok: parseFloat(r.nok) || 0 }));
 
   const fd = new FormData();
