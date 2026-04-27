@@ -257,10 +257,6 @@ getEl("btn-submit")?.addEventListener("click", async () => {
     return;
   }
 
-  hide("submit-error");
-  showView("processing");
-  updateProgress(1, 2, "Uploading files…");
-
   // Validate wire rows: every row that has a date or USD must also have NOK > 0
   const incompleteWires = state.wireRows.filter(r => {
     const hasData = r.date || parseFloat(r.usd) > 0;
@@ -279,6 +275,10 @@ getEl("btn-submit")?.addEventListener("click", async () => {
     });
     return;
   }
+
+  hide("submit-error");
+  showView("processing");
+  updateProgress(1, 2, "Uploading files…");
 
   const wires = state.wireRows
     .filter(r => r.date && (parseFloat(r.usd) > 0 || parseFloat(r.nok) > 0))
