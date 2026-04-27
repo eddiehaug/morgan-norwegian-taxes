@@ -524,6 +524,18 @@ def read(fd, filename: str = "", is_prior_year: bool = False, **kwargs) -> Trans
                 opening_cash=open_c,
                 closing_cash=close_c
             )
+            # Inject CASHADJUST so the cash ledger initializes correctly for the next year
+            if is_prior_year and close_c > 0:
+                c_date = metadata.get("todate") or date.today()
+                from espp2.datamodels import EntryTypeEnum
+                entry = _make_entry({
+                    "type": EntryTypeEnum.CASHADJUST,
+                    "date": c_date,
+                    "amount": _make_amount("USD", close_c, c_date),
+                    "description": "Historical Cash Carryover",
+                    "source": source,
+                })
+                entries.append(entry)
 
     # Sort by date
     entries.sort(key=lambda e: e.date)
