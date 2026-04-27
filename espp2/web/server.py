@@ -196,7 +196,7 @@ def _run_tax_calculation(job_id: str, reporting_pdf_path: str,
 
         holdfile = None
         if prior_pdf_path:
-            prior_transactions = normalize(prior_pdf_path, broker)
+            prior_transactions = normalize(prior_pdf_path, broker, is_prior_year=True)
             # Determine prior year
             prior_year = year - 1
             prior_years = {}
@@ -296,6 +296,21 @@ def _run_tax_calculation(job_id: str, reporting_pdf_path: str,
             })
 
         remaining = summary.cashsummary.remaining_cash
+        usd_balance = round(float(remaining.value), 2)
+        usd_balance_nok = int(round(float(remaining.nok_value))) if remaining.nok_value else 0
+
+        # Override with exact closing cash from PDF if available
+        if reporting_transactions.opening_balance and reporting_transactions.opening_balance.closing_cash is not None:
+            usd_balance = float(reporting_transactions.opening_balance.closing_cash)
+            # Fetch the exchange rate for the exact year-end to compute precise Formue
+            from espp2.fmv import FMV
+            import datetime
+            try:
+                rate = FMV().get_currency("USD", datetime.date(year, 12, 31), "NOK")
+                usd_balance_nok = int(round(usd_balance * float(rate)))
+            except Exception:
+                pass
+
         # gain_aggregated = FX gain already included in share taxable_gain (Type A)
         # gain            = separate FX gain to report under Finans → Valuta (Type B)
         fx_gain_aggregated = int(round(float(summary.cashsummary.gain_aggregated)))
@@ -308,8 +323,8 @@ def _run_tax_calculation(job_id: str, reporting_pdf_path: str,
             "foreignshares": foreignshares,
             "fx_gain_aggregated_nok": fx_gain_aggregated,
             "fx_gain_nok": fx_gain_separate,
-            "usd_balance": round(float(remaining.value), 2),
-            "usd_balance_nok": int(round(float(remaining.nok_value))) if remaining.nok_value else 0,
+            "usd_balance": usd_balance,
+            "usd_balance_nok": usd_balance_nok,
         }
 
         job.update({

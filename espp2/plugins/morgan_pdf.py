@@ -362,11 +362,59 @@ def _parse_withdrawal_blocks(full_text: str, entries: list, source: str = "morga
         logger.debug("WIRE %s amount=%s ref=%s", entry_date, net_proceeds, ref_no)
 
 
+_SUMMARY_PATTERN = re.compile(
+    r"(GOOG[L]?)\s*(?:-\s*(?:NASDAQ)?)?\s*"    # Fund
+    r"(\d{2}-[A-Za-z]{3}-\d{4})\s+"            # Acquisition Date
+    r"\d+\s+"                                  # Lot
+    r"(?:Short|Long)\s+Term\s+"                # Capital Gain Impact
+    r"\$?-?[\d,\.]+(?:\s*USD)?\s+"             # Gain/Loss
+    r"\$?-?[\d,\.]+(?:\s*USD)?\s+"             # Cost Basis
+    r"\$?([\d,\.]+)(?:\s*USD)?\s+"             # Cost Basis Per Share
+    r"([\d,\.]+)\s+"                           # Total Shares
+    r"\$?[\d,\.]+(?:\s*USD)?\s+"               # Current Price
+    r"\$?-?[\d,\.]+(?:\s*USD)?(?:\s*NASDAQ)?"  # Current Value
+    , re.IGNORECASE
+)
+
+def _parse_holdings_summary(full_text: str, entries: list, source: str = "morgan_pdf"):
+    """
+    Parse the 'Summary of Stock/Shares Holdings' table from the prior year statement.
+    This creates DEPOSIT entries that carry over historical lots.
+    """
+    for m in _SUMMARY_PATTERN.finditer(full_text):
+        symbol = m.group(1).strip()
+        if symbol == "GOOGL":
+            symbol = "GOOG"  # Assuming they convert or we just use GOOG for savings plan
+        
+        acq_date_str = m.group(2).strip()
+        cost_basis_per_share_str = m.group(3).strip()
+        total_shares_str = m.group(4).strip()
+
+        entry_date = _parse_date(acq_date_str)
+        price_per_share = _parse_decimal(cost_basis_per_share_str)
+        qty = _parse_decimal(total_shares_str)
+
+        if not entry_date or not price_per_share or not qty:
+            continue
+
+        entry = _make_entry({
+            "type": EntryTypeEnum.DEPOSIT,
+            "date": entry_date,
+            "qty": qty,
+            "symbol": symbol,
+            "purchase_price": _make_amount("USD", price_per_share, entry_date),
+            "description": "Historical Lot from Summary",
+            "source": source,
+        })
+        entries.append(entry)
+        logger.debug("DEPOSIT (Historical) %s %s qty=%s price=%s", symbol, entry_date, qty, price_per_share)
+
+
 # ---------------------------------------------------------------------------
 # Main read() function
 # ---------------------------------------------------------------------------
 
-def read(fd, filename: str = "", **kwargs) -> Transactions:  # noqa: C901
+def read(fd, filename: str = "", is_prior_year: bool = False, **kwargs) -> Transactions:  # noqa: C901
     """
     Parse a Morgan Stanley annual PDF statement from StockPlanConnect.
 
@@ -421,7 +469,7 @@ def read(fd, filename: str = "", **kwargs) -> Transactions:  # noqa: C901
             )
 
             # ── Parse ESPP activity table ──────────────────────────────────
-            if is_espp_activity:
+            if is_espp_activity and not is_prior_year:
                 espp_activity_found = True
                 # Determine symbol from page text (prefer GOOG for savings plan)
                 page_symbols = re.findall(r"([A-Z]{2,6})\s*-\s*NASDAQ", page_text)
@@ -442,19 +490,40 @@ def read(fd, filename: str = "", **kwargs) -> Transactions:  # noqa: C901
                     if has_header or (espp_activity_found and _looks_like_espp_data(table)):
                         _parse_espp_activity(table, symbol, entries, source=source)
 
-            # ── Collect withdrawal text ────────────────────────────────────
-            if "withdrawal on" in lower_text or "net proceeds" in lower_text:
-                all_withdrawal_text += "\n" + page_text
+            # ── Collect text for withdrawals and summary parsing ────────────────────────────────────
+            all_withdrawal_text += "\n" + page_text
 
     # ── Parse withdrawal/wire blocks ────────────────────────────────────────
     if all_withdrawal_text:
         _parse_withdrawal_blocks(all_withdrawal_text, entries, source=source)
+        if is_prior_year:
+            _parse_holdings_summary(all_withdrawal_text, entries, source=source)
 
     if not entries:
         logger.warning("No transactions found in PDF: %s — check PDF format", filename)
         # Return empty but valid Transactions
         today = date.today()
         return Transactions(transactions=[], fromdate=today, todate=today)
+
+    # ── Extract Cash Balances ───────────────────────────────────────────────
+    from espp2.datamodels import TransactionTaxYearBalances
+    opening_balance = None
+    _CASH_PATTERN = re.compile(
+        r"Fund:\s*Cash\s*-\s*USD\s*.*?"
+        r"Opening\s+Value\s+\$?-?([\d,\.]+)\s*(?:USD)?"
+        r".*?"
+        r"Closing\s+Value\s+\$?-?([\d,\.]+)\s*(?:USD)?",
+        re.IGNORECASE | re.DOTALL
+    )
+    cash_match = _CASH_PATTERN.search(all_withdrawal_text)
+    if cash_match:
+        open_c = _parse_decimal(cash_match.group(1))
+        close_c = _parse_decimal(cash_match.group(2))
+        if open_c is not None and close_c is not None:
+            opening_balance = TransactionTaxYearBalances(
+                opening_cash=open_c,
+                closing_cash=close_c
+            )
 
     # Sort by date
     entries.sort(key=lambda e: e.date)
@@ -467,7 +536,7 @@ def read(fd, filename: str = "", **kwargs) -> Transactions:  # noqa: C901
         len(entries), filename, fromdate, todate, metadata.get("account_id"),
     )
 
-    t = Transactions(transactions=entries, fromdate=fromdate, todate=todate)
+    t = Transactions(transactions=entries, fromdate=fromdate, todate=todate, opening_balance=opening_balance)
     # Store account_id as a dynamic attribute for the web server to pick up
     t.__dict__["account_id"] = metadata.get("account_id", "")
     return t
