@@ -46,10 +46,10 @@ _entry_adapter = TypeAdapter(Entry)
 # ---------------------------------------------------------------------------
 
 def _clean(s) -> str:
-    """Strip zero-width spaces and surrounding whitespace."""
+    """Strip zero-width spaces, newlines, and surrounding whitespace."""
     if s is None:
         return ""
-    return str(s).replace("\u200b", "").strip()
+    return str(s).replace("\u200b", "").replace("\n", " ").replace("\r", "").strip()
 
 
 def _parse_date(s: str) -> Optional[date]:
@@ -70,7 +70,7 @@ def _parse_decimal(s) -> Optional[Decimal]:
     s = _clean(s)
     if not s or s in ("-", "—", "N/A", ""):
         return None
-    cleaned = s.replace("$", "").replace(",", "").replace(" ", "")
+    cleaned = s.replace("$", "").replace(",", "").replace(" ", "").replace("USD", "").replace("NOK", "")
     try:
         return Decimal(cleaned)
     except InvalidOperation:
@@ -415,9 +415,9 @@ def read(fd, filename: str = "", **kwargs) -> Transactions:  # noqa: C901
             lower_text = page_text.lower()
             is_espp_activity = (
                 "entry date" in lower_text
-                and "number of shares" in lower_text
+                and "number of" in lower_text
+                and "shares" in lower_text
                 and "activity" in lower_text
-                and "share" in lower_text
             )
 
             # ── Parse ESPP activity table ──────────────────────────────────
