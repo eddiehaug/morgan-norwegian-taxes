@@ -888,7 +888,7 @@ class TransferRecord(BaseModel):
 
     date: date
     amount_sent: Annotated[Decimal, Field(ge=0, decimal_places=0)]
-    amount_received: Annotated[Decimal, Field(gt=0, decimal_places=0)]
+    amount_received: Annotated[Decimal, Field(ge=0, decimal_places=0)]
     gain: Annotated[Decimal, Field(decimal_places=0)]
     aggregated_gain: Annotated[Decimal, Field(decimal_places=0)]
     description: str
